@@ -6,6 +6,7 @@ function initialWatch(){}
 function Scope(){
   this.$$watchers = [];
   this.$$lastDirtyWatch = null;
+  this.$$asyncQuene = [];
 }
 
 Scope.prototype.$watch = function(watchFn,listenerFn,valueEq){
@@ -81,6 +82,10 @@ Scope.prototype.$apply = function(expr){
   }finally{
     this.$digest();
   }
-}
+};
+
+Scope.prototype.$evalAsync = function(expr){
+  this.$$asyncQuene.push({scope: this,expression: expr});
+};
 
 module.exports = Scope;
