@@ -8,7 +8,7 @@ describe('Scope',function(){
     expect(scope.aProperty).toBe(1);
   });
 
-  describe('digest',function(){
+  describe('$digest',function(){
     var scope;
     beforeEach(function(){
       scope = new Scope();
@@ -318,15 +318,81 @@ describe('Scope',function(){
       scope.aValue = 'abc';
       scope.counter = 0;
 
-      var destroy1 = scope.$watch(
+      var destroyWatch1 = scope.$watch(
         function(scope){
-          destroy1();
-          destroy2();
+          destroyWatch1();
+          destroyWatch2();
+        }
+      );
+
+      var destroyWatch2 = scope.$watch(
+        function(scope){ return scope.aValue; },
+        function(newValue,oldValue,scope){
+          scope.counter++;
         }
       );
 
       scope.$digest();
       expect(scope.counter).toBe(0);
+    });
+
+  });
+
+  describe('$eval', function(){
+    var scope;
+
+    beforeEach(function(){
+      scope = new Scope();
+    });
+
+    it('executes $evaled function and returns result', function(){
+      scope.aValue = 42;
+      var result = scope.$eval(function(scope){
+        return scope.aValue;
+      });
+
+      expect(result).toBe(42);
+    });
+
+    it('passes the  second $eval argument straight through', function(){
+      scope.aValue = 42;
+      var result = scope.$eval(function(scope,arg){
+        return scope.aValue + arg;
+      },2);
+
+      expect(result).toBe(44);
+    });
+  });
+
+  describe('$apply', function(){
+    var scope;
+
+    beforeEach(function(){
+      scope = new Scope();
+    });
+
+    it('executes the given function and starts the digest', function(){
+      scope.aValue = 'someValue';
+      scope.counter = 0;
+
+      scope.$watch(
+        function(){
+          return scope.aValue;
+        },
+        function(newValue,oldValue,scope){
+          scope.counter++;
+        }
+      );
+
+      scope.$digest();
+      expect(scope.counter).toBe(1);
+
+      scope.$apply(function(){
+        scope.aValue = 'someOtherValue';
+      });
+
+      expect(scope.counter).toBe(2);
+
     });
   });
 });
