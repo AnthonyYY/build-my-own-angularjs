@@ -7,6 +7,7 @@ function Scope(){
   this.$$watchers = [];
   this.$$lastDirtyWatch = null;
   this.$$asyncQuene = [];
+  this.$$phase = null;
 }
 
 Scope.prototype.$watch = function(watchFn,listenerFn,valueEq){
@@ -56,12 +57,19 @@ Scope.prototype.$digest = function(){
   var ttl = 10;
   var dirty;
   this.$$lastDirtyWatch = null;
+  this.$beginPhase('$digest');
   do{
+    while(this.$$asyncQuene.length){
+      var asyncTask = this.$$asyncQuene.shift();
+      asyncTask.scope.$eval(asyncTask.expression);
+    }
     dirty = this.$$digestOnce();
-    if(dirty && !(ttl--)){
+    if((dirty || this.$$asyncQuene.length ) && !(ttl--)){
+      this.$clearPhase();
       throw '10 digest iterations reached';
     }
-  }while(dirty);
+  }while(dirty || this.$$asyncQuene.length);
+  this.$clearPhase();
 };
 
 Scope.prototype.$$areEqual = function(newValue,oldValue,valueEq){
@@ -78,14 +86,35 @@ Scope.prototype.$eval = function(expr,locals){
 
 Scope.prototype.$apply = function(expr){
   try{
+    this.$beginPhase('$apply');
     return this.$eval(expr);
   }finally{
+    this.$clearPhase();
     this.$digest();
   }
 };
 
 Scope.prototype.$evalAsync = function(expr){
+  var self = this;
+  if(!self.$$phase && !self.$$asyncQuene.length){
+    setTimeout(function(){
+      if(self.$$asyncQuene.length){
+        self.$digest();
+      }
+    },0);
+  }
   this.$$asyncQuene.push({scope: this,expression: expr});
+};
+
+Scope.prototype.$beginPhase = function(phase){
+  if(this.$$phase){
+    throw this.$$phase + ' already in progress.';
+  }
+  this.$$phase = phase;
+};
+
+Scope.prototype.$clearPhase = function(){
+  this.$$phase = null;
 };
 
 module.exports = Scope;
