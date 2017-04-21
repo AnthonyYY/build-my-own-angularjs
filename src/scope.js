@@ -7,7 +7,9 @@ function Scope(){
   this.$$watchers = [];
   this.$$lastDirtyWatch = null;
   this.$$asyncQuene = [];
+  this.$$applyAsyncQuene = [];
   this.$$phase = null;
+  this.$$applyAsyncId = null;
 }
 
 Scope.prototype.$watch = function(watchFn,listenerFn,valueEq){
@@ -104,6 +106,23 @@ Scope.prototype.$evalAsync = function(expr){
     },0);
   }
   this.$$asyncQuene.push({scope: this,expression: expr});
+};
+
+Scope.prototype.$applyAsync = function(expr){
+  var self = this;
+  self.$$applyAsyncQuene.push(function(){
+    self.$eval(expr);
+  });
+  if(self.$$applyAsyncId === null){
+    self.$$applyAsyncId = setTimeout(function(){
+      self.$apply(function(){
+        while(self.$$applyAsyncQuene.length){
+          self.$$applyAsyncQuene.shift()();
+        }
+        self.$$applyAsyncId = null;
+      });
+    },0);
+  }
 };
 
 Scope.prototype.$beginPhase = function(phase){

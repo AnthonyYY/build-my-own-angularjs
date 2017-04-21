@@ -522,13 +522,13 @@ describe('Scope',function(){
     });
   });
 
-  describe('applyAsycn', function(){
+  describe('applyAsync', function(){
     var scope;
     beforeEach(function () {
       scope = new Scope();
     });
 
-    it('allows async $apply with $applyAsycn', function(done){
+    it('allows async $apply with $apply', function(done){
       scope.counter = 0;
       scope.$watch(
         function(scope){ return scope.aValue; },
@@ -548,7 +548,54 @@ describe('Scope',function(){
       setTimeout(function(){
         expect(scope.counter).toBe(2);
         done();
-      },50)
+      },50);
+    });
+
+    it('never executes $applyAsynced function in the same circle', function(done){
+      scope.aValue = [1,2,3];
+      scope.asyncApplied = false;
+
+      scope.$watch(
+        function (scope) {
+          return scope.aValue;
+        },
+        function(newValue,oldValue,scope){
+          scope.$applyAsync(function(scope){
+            scope.asyncApplied = true;
+          });
+        }
+      );
+
+      scope.$digest();
+      expect(scope.asyncApplied).toBe(false);
+      setTimeout(function(){
+        expect(scope.asyncApplied).toBe(true);
+        done();
+      },50);
+    });
+
+    it('coalesces many calls to $applyAsync', function(done){
+      scope.counter = 0;
+      scope.$watch(
+        function(scope){
+          scope.counter++;
+          return scope.aValue;
+        },
+        function(newValue,oldValue,scope){}
+      );
+
+      scope.$applyAsync(function(){
+        scope.aValue = 'abc';
+      });
+
+      scope.$applyAsync(function(){
+        scope.aValue = 'def';
+      });
+
+      setTimeout(function(){
+        expect(scope.counter).toBe(2);
+        done();
+      },50);
     });
   });
 });
